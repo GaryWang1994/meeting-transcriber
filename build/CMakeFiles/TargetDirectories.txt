@@ -1,0 +1,7 @@
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/MeetingTranscriber.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/edit_cache.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/rebuild_cache.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/list_install_components.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/install.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/install/local.dir
+/home/garywang/Desktop/project/meeting-transcriber/build/CMakeFiles/install/strip.dir
