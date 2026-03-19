@@ -35,14 +35,14 @@ struct ASRConfig {
 
 // ASR结果
 struct ASRResult {
-    std::string text;           // 转录文本
-    double startTime;           // 开始时间（秒）
-    double endTime;             // 结束时间（秒）
-    float confidence;             // 置信度 [0-1]
-    std::vector<float> tokenLogProbs; // 每个token的对数概率
-    std::string language;       // 检测到的语言
-    
-    // 合并相邻的片段（用于优化显示）
+    std::string text;
+    double startTime;
+    double endTime;
+    float confidence;
+    std::vector<float> tokenLogProbs;
+    std::string language;
+    int speakerId;
+
     bool canMergeWith(const ASRResult& other, double maxGap = 1.0) const;
     ASRResult mergeWith(const ASRResult& other) const;
 };

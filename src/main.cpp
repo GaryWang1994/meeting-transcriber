@@ -194,12 +194,11 @@ int processAudioFile(const CommandLineArgs& args) {
         transcriptConfig.includeTimestamps = args.includeTimestamps;
         transcriptConfig.includeSpeakerLabels = args.includeSpeakerLabels;
         
-        // 设置输出格式
-        if (args.format == "md") transcriptConfig.outputFormat = TranscriptConfig::OutputFormat::MARKDOWN;
-        else if (args.format == "txt") transcriptConfig.outputFormat = TranscriptConfig::OutputFormat::TEXT;
-        else if (args.format == "json") transcriptConfig.outputFormat = TranscriptConfig::OutputFormat::JSON;
-        else if (args.format == "csv") transcriptConfig.outputFormat = TranscriptConfig::OutputFormat::CSV;
-        else if (args.format == "html") transcriptConfig.outputFormat = TranscriptConfig::OutputFormat::HTML;
+        if (args.format == "md") transcriptConfig.outputFormat = OutputFormat::MARKDOWN;
+        else if (args.format == "txt") transcriptConfig.outputFormat = OutputFormat::TEXT;
+        else if (args.format == "json") transcriptConfig.outputFormat = OutputFormat::JSON;
+        else if (args.format == "csv") transcriptConfig.outputFormat = OutputFormat::CSV;
+        else if (args.format == "html") transcriptConfig.outputFormat = OutputFormat::HTML;
         
         TranscriptGenerator generator;
         generator.setConfig(transcriptConfig);
@@ -212,16 +211,16 @@ int processAudioFile(const CommandLineArgs& args) {
         // 导出文件
         std::string content;
         switch (transcriptConfig.outputFormat) {
-            case TranscriptConfig::OutputFormat::MARKDOWN:
+            case OutputFormat::MARKDOWN:
                 content = document.toMarkdown();
                 break;
-            case TranscriptConfig::OutputFormat::TEXT:
+            case OutputFormat::TEXT:
                 content = document.toText();
                 break;
-            case TranscriptConfig::OutputFormat::JSON:
+            case OutputFormat::JSON:
                 content = document.toJson();
                 break;
-            case TranscriptConfig::OutputFormat::CSV:
+            case OutputFormat::CSV:
                 // CSV需要特殊处理
                 content = "timestamp,speaker,text,confidence\n";
                 for (const auto& seg : document.segments) {
@@ -231,7 +230,7 @@ int processAudioFile(const CommandLineArgs& args) {
                     content += std::to_string(seg.confidence) + "\n";
                 }
                 break;
-            case TranscriptConfig::OutputFormat::HTML:
+            case OutputFormat::HTML:
                 content = R"(<!DOCTYPE html>
 <html>
 <head>

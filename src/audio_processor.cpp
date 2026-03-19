@@ -351,4 +351,149 @@ std::string FFmpegAudioDecoder::getLastError() const {
 
 #endif
 
+AudioProcessor::AudioProcessor()
+    : m_decoder(std::make_unique<FFmpegAudioDecoder>())
+    , m_resampler(std::make_unique<AudioResampler>())
+    , m_targetSampleRate(16000)
+    , m_targetChannels(1) {
+    m_stats = {};
+}
+
+AudioProcessor::~AudioProcessor() = default;
+
+void AudioProcessor::setTargetFormat(int sampleRate, int channels) {
+    m_targetSampleRate = sampleRate;
+    m_targetChannels = channels;
+}
+
+bool AudioProcessor::processFile(const std::string& inputPath, AudioBuffer& output, ProgressCallback* callback) {
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    if (callback) {
+        callback->onMessage("正在打开音频文件...");
+    }
+
+    if (!m_decoder->open(inputPath)) {
+        Logger::error("无法打开音频文件: " + inputPath);
+        return false;
+    }
+
+    AudioFormat inputFormat = m_decoder->getFormat();
+
+    if (callback) {
+        callback->onMessage("解码音频...");
+    }
+
+    if (!m_decoder->decodeToBuffer(output, callback)) {
+        Logger::error("音频解码失败");
+        m_decoder->close();
+        return false;
+    }
+
+    m_decoder->close();
+
+    if (inputFormat.sampleRate != m_targetSampleRate || inputFormat.channels != m_targetChannels) {
+        if (callback) {
+            callback->onMessage("Resampling...");
+        }
+
+        if (!m_resampler->initialize(inputFormat.sampleRate, inputFormat.channels,
+                                     m_targetSampleRate, m_targetChannels)) {
+            Logger::error("Resampler initialization failed");
+            return false;
+        }
+
+        size_t inputSamples = output.size();
+        size_t outputSamples = m_resampler->calculateOutputSamples(inputSamples);
+
+        std::vector<float> resampledData(outputSamples);
+        size_t actualOutputSamples = outputSamples;
+
+        if (!m_resampler->process(output.data(), inputSamples, resampledData.data(), actualOutputSamples)) {
+            Logger::error("Resampling failed");
+            return false;
+        }
+
+        output.clear();
+        output.append(resampledData.data(), actualOutputSamples);
+        m_stats.resampleOperations++;
+    }
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    m_stats.processingTime = std::chrono::duration<double>(endTime - startTime).count();
+    m_stats.inputDuration = static_cast<double>(output.size()) / m_targetSampleRate;
+    m_stats.outputDuration = m_stats.inputDuration;
+
+    return true;
+}
+
+bool AudioProcessor::processFiles(const std::vector<std::string>& inputPaths,
+                                   std::vector<AudioBuffer>& outputs,
+                                   ProgressCallback* callback) {
+    outputs.clear();
+    outputs.reserve(inputPaths.size());
+
+    for (size_t i = 0; i < inputPaths.size(); ++i) {
+        if (callback) {
+            callback->onMessage("处理文件 " + std::to_string(i + 1) + "/" + std::to_string(inputPaths.size()));
+        }
+
+        AudioBuffer buffer;
+        if (!processFile(inputPaths[i], buffer, callback)) {
+            return false;
+        }
+
+        outputs.push_back(std::move(buffer));
+    }
+
+    return true;
+}
+
+AudioProcessor::ProcessingStats AudioProcessor::getStats() const {
+    return m_stats;
+}
+
+struct AudioResampler::Impl {
+    int srcSampleRate = 0;
+    int srcChannels = 0;
+    int dstSampleRate = 0;
+    int dstChannels = 0;
+};
+
+AudioResampler::AudioResampler() : m_impl(std::make_unique<Impl>()) {}
+AudioResampler::~AudioResampler() = default;
+
+bool AudioResampler::initialize(int srcSampleRate, int srcChannels, int dstSampleRate, int dstChannels) {
+    m_impl->srcSampleRate = srcSampleRate;
+    m_impl->srcChannels = srcChannels;
+    m_impl->dstSampleRate = dstSampleRate;
+    m_impl->dstChannels = dstChannels;
+    return true;
+}
+
+bool AudioResampler::process(const float* input, size_t inputSamples, float* output, size_t& outputSamples) {
+    if (!input || !output) return false;
+    
+    size_t maxOutput = outputSamples;
+    outputSamples = 0;
+    
+    for (size_t i = 0; i < inputSamples && outputSamples < maxOutput; ++i) {
+        output[outputSamples++] = input[i];
+    }
+    
+    return true;
+}
+
+bool AudioResampler::flush(float* output, size_t& outputSamples) {
+    outputSamples = 0;
+    return true;
+}
+
+size_t AudioResampler::calculateOutputSamples(size_t inputSamples) const {
+    return inputSamples;
+}
+
+void AudioResampler::reset() {
+}
+
 } // namespace meeting_transcriber

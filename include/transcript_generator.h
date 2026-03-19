@@ -13,29 +13,40 @@ namespace meeting_transcriber {
 
 // Transcript output format
 enum class OutputFormat {
-    TEXT,       // Plain text
-    MARKDOWN,   // Markdown with formatting
-    JSON,       // JSON for programmatic use
-    SRT,        // Subtitle format
-    VTT         // WebVTT format
+    TEXT,
+    MARKDOWN,
+    JSON,
+    CSV,
+    HTML,
+    SRT,
+    VTT
 };
 
 // Transcript generator configuration
 struct TranscriptConfig {
     OutputFormat format;
+    OutputFormat outputFormat;
     bool includeTimestamps;
     bool includeSpeakerLabels;
     bool includeConfidence;
-    std::string timestampFormat;      // "HH:MM:SS" or "MM:SS"
-    int timestampPrecision;            // Decimal places for seconds
-    bool groupConsecutiveSpeakers;    // Group same speaker segments
-    std::string speakerLabelPrefix;    // "Speaker " or custom
-    
-    TranscriptConfig() 
-        : format(OutputFormat::TEXT), includeTimestamps(true),
+    std::string timestampFormat;
+    int timestampPrecision;
+    bool groupConsecutiveSpeakers;
+    std::string speakerLabelPrefix;
+    bool addParagraphBreaks;
+    double paragraphBreakTime;
+    std::string meetingTitle;
+    std::string meetingDate;
+    std::vector<std::string> participants;
+    std::string notes;
+
+    TranscriptConfig()
+        : format(OutputFormat::TEXT), outputFormat(OutputFormat::TEXT),
+          includeTimestamps(true),
           includeSpeakerLabels(true), includeConfidence(false),
           timestampFormat("HH:MM:SS"), timestampPrecision(0),
-          groupConsecutiveSpeakers(true), speakerLabelPrefix("Speaker ") {}
+          groupConsecutiveSpeakers(true), speakerLabelPrefix("Speaker "),
+          addParagraphBreaks(true), paragraphBreakTime(5.0) {}
 };
 
 // Transcript segment with speaker info
@@ -50,22 +61,79 @@ struct RichTranscriptSegment {
     std::vector<double> wordTimestamps;
 };
 
+struct TranscriptParagraph {
+    double startTime;
+    double endTime;
+    std::string speakerLabel;
+    std::string text;
+    float avgConfidence;
+    std::vector<int> segmentIndices;
+};
+
+class MeetingTranscriptDocument {
+public:
+    std::string sourceFile;
+    double duration;
+    std::chrono::system_clock::time_point processedAt;
+    std::vector<SpeakerInfo> speakers;
+    std::vector<TranscriptionSegment> segments;
+    
+    struct Statistics {
+        int totalSegments;
+        int totalParagraphs;
+        int speakerCount;
+        double avgSegmentDuration;
+        std::map<int, double> speakerSpeakingTime;
+    };
+
+    MeetingTranscriptDocument();
+    
+    void setSourceFile(const std::string& path);
+    void setTitle(const std::string& title);
+    void setDate(const std::string& date);
+    void setDuration(double dur);
+    void addParticipant(const std::string& name);
+    void setNotes(const std::string& notes);
+    void addSpeaker(const SpeakerInfo& speaker);
+    void addSegment(const TranscriptionSegment& segment);
+    void addParagraph(const TranscriptParagraph& paragraph);
+    void organizeParagraphs(const TranscriptConfig& config);
+    void calculateStatistics();
+    
+    const std::vector<TranscriptParagraph>& getParagraphs() const { return m_paragraphs; }
+    std::string toMarkdown() const;
+    std::string toText() const;
+    std::string toJson() const;
+
+private:
+    std::string m_title;
+    std::string m_date;
+    std::vector<std::string> m_participants;
+    std::string m_notes;
+    std::vector<TranscriptParagraph> m_paragraphs;
+    Statistics m_statistics;
+};
+
 // Transcript generator class
 class TranscriptGenerator {
 public:
     TranscriptGenerator();
     ~TranscriptGenerator();
     
-    // Set configuration
     void setConfig(const TranscriptConfig& config);
-    TranscriptConfig getConfig() const;
+    const TranscriptConfig& getConfig() const;
     
-    // Generate transcript from meeting record
-    std::string generate(const MeetingTranscript& transcript);
-    
-    // Generate from segments directly
-    std::string generateFromSegments(const std::vector<TranscriptionSegment>& segments,
-                                     const std::vector<SpeakerInfo>& speakers);
+    MeetingTranscriptDocument generate(
+        const std::vector<ASRResult>& asrResults,
+        const std::vector<SpeakerInfo>& speakers,
+        const std::string& audioFilePath,
+        double duration);
+
+    MeetingTranscriptDocument generate(
+        const std::vector<TranscriptionSegment>& segments,
+        const std::vector<SpeakerInfo>& speakers,
+        const std::string& audioFilePath,
+        double duration);
     
     // Generate rich transcript with word-level timestamps
     std::vector<RichTranscriptSegment> generateRichTranscript(
@@ -97,8 +165,14 @@ private:
     // Format single segment
     std::string formatSegment(const TranscriptionSegment& segment, const SpeakerInfo* speaker);
     
-    // Generate speaker map
     std::map<int, SpeakerInfo> createSpeakerMap(const std::vector<SpeakerInfo>& speakers);
+
+    std::vector<TranscriptionSegment> optimizeSegments(const std::vector<TranscriptionSegment>& segments);
+    std::vector<TranscriptionSegment> mergeShortSegments(const std::vector<TranscriptionSegment>& segments, double minDuration);
+    std::vector<TranscriptionSegment> splitLongSegments(const std::vector<TranscriptionSegment>& segments, double maxDuration);
+    std::vector<SpeakerInfo> assignSpeakerNames(const std::vector<SpeakerInfo>& speakers, const std::vector<std::string>& knownNames);
+    std::vector<TranscriptionSegment> mergeConsecutiveSameSpeaker(const std::vector<TranscriptionSegment>& segments);
+    std::vector<TranscriptParagraph> createParagraphs(const std::vector<TranscriptionSegment>& segments);
 };
 
 // Meeting statistics generator
@@ -150,6 +224,16 @@ public:
 private:
     MeetingTranscript m_transcript;
     bool m_modified;
+};
+
+class TranscriptExporter {
+public:
+    static bool exportToFile(const MeetingTranscriptDocument& document,
+                            const TranscriptConfig& config,
+                            const std::string& outputPath);
+    static std::string generateFilename(const std::string& inputAudioPath,
+                                         const OutputFormat format);
+    static std::string getFileExtension(OutputFormat format);
 };
 
 } // namespace meeting_transcriber

@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <sstream>
 #include <chrono>
+#include <cmath>
 
 namespace meeting_transcriber {
 
@@ -125,20 +126,74 @@ void MeetingTranscriptDocument::calculateStatistics() {
     m_statistics.totalSegments = segments.size();
     m_statistics.totalParagraphs = m_paragraphs.size();
     m_statistics.speakerCount = speakers.size();
-    
+
     if (segments.empty()) return;
-    
-    // 计算平均片段时长
+
     double totalDuration = 0.0;
     for (const auto& seg : segments) {
         totalDuration += (seg.endTime - seg.startTime);
     }
     m_statistics.avgSegmentDuration = totalDuration / segments.size();
-    
-    // 计算各说话人发言时间
+
     for (const auto& speaker : speakers) {
         m_statistics.speakerSpeakingTime[speaker.id] = speaker.totalSpeakingTime;
     }
+}
+
+std::string MeetingTranscriptDocument::toMarkdown() const {
+    std::string result = "# " + m_title + "\n\n";
+    result += "**Date:** " + m_date + "\n\n";
+    result += "**Source:** " + sourceFile + "\n\n";
+    result += "## Transcript\n\n";
+
+    for (const auto& para : m_paragraphs) {
+        result += "**" + para.speakerLabel + "** (" + 
+                  TimeUtils::formatTimestamp(para.startTime) + "): " +
+                  para.text + "\n\n";
+    }
+    return result;
+}
+
+std::string MeetingTranscriptDocument::toText() const {
+    std::string result = m_title + "\n";
+    result += "Date: " + m_date + "\n";
+    result += "Source: " + sourceFile + "\n\n";
+
+    for (const auto& para : m_paragraphs) {
+        result += para.speakerLabel + " (" + 
+                  TimeUtils::formatTimestamp(para.startTime) + "): " +
+                  para.text + "\n";
+    }
+    return result;
+}
+
+std::string MeetingTranscriptDocument::toJson() const {
+    std::string result = "{\n";
+    result += "  \"title\": \"" + m_title + "\",\n";
+    result += "  \"date\": \"" + m_date + "\",\n";
+    result += "  \"sourceFile\": \"" + sourceFile + "\",\n";
+    result += "  \"duration\": " + std::to_string(duration) + ",\n";
+    result += "  \"speakers\": [\n";
+
+    for (size_t i = 0; i < speakers.size(); ++i) {
+        result += "    {\"id\": " + std::to_string(speakers[i].id) + 
+                  ", \"label\": \"" + speakers[i].label + "\"}";
+        if (i < speakers.size() - 1) result += ",";
+        result += "\n";
+    }
+    result += "  ],\n";
+
+    result += "  \"paragraphs\": [\n";
+    for (size_t i = 0; i < m_paragraphs.size(); ++i) {
+        result += "    {\"speaker\": \"" + m_paragraphs[i].speakerLabel + 
+                  "\", \"start\": " + std::to_string(m_paragraphs[i].startTime) +
+                  ", \"text\": \"" + m_paragraphs[i].text + "\"}";
+        if (i < m_paragraphs.size() - 1) result += ",";
+        result += "\n";
+    }
+    result += "  ]\n}";
+
+    return result;
 }
 
 // ============== TranscriptGenerator ==============
@@ -384,13 +439,13 @@ bool TranscriptExporter::exportToFile(const MeetingTranscriptDocument& document,
     std::string content;
     
     switch (config.outputFormat) {
-        case TranscriptConfig::OutputFormat::MARKDOWN:
+        case OutputFormat::MARKDOWN:
             content = document.toMarkdown();
             break;
-        case TranscriptConfig::OutputFormat::TEXT:
+        case OutputFormat::TEXT:
             content = document.toText();
             break;
-        case TranscriptConfig::OutputFormat::JSON:
+        case OutputFormat::JSON:
             content = document.toJson();
             break;
         default:
@@ -400,29 +455,25 @@ bool TranscriptExporter::exportToFile(const MeetingTranscriptDocument& document,
     return FileUtils::writeTextFile(outputPath, content);
 }
 
-std::string TranscriptExporter::generateFilename(const std::string& inputAudioPath,
-                                               const TranscriptConfig::OutputFormat format) {
+std::string generateFilename(const std::string& inputAudioPath, const OutputFormat format) {
     std::string baseName = FileUtils::getFilename(inputAudioPath);
-    
-    // 移除扩展名
     size_t dotPos = baseName.find_last_of('.');
     if (dotPos != std::string::npos) {
         baseName = baseName.substr(0, dotPos);
     }
-    
-    std::string ext = getFileExtension(format);
+    std::string ext = TranscriptExporter::getFileExtension(format);
     return baseName + ext;
 }
 
-std::string TranscriptExporter::getFileExtension(TranscriptConfig::OutputFormat format) {
+std::string TranscriptExporter::getFileExtension(OutputFormat format) {
     switch (format) {
-        case TranscriptConfig::OutputFormat::MARKDOWN: return ".md";
-        case TranscriptConfig::OutputFormat::TEXT: return ".txt";
-        case TranscriptConfig::OutputFormat::JSON: return ".json";
-        case TranscriptConfig::OutputFormat::CSV: return ".csv";
-        case TranscriptConfig::OutputFormat::HTML: return ".html";
-        case TranscriptConfig::OutputFormat::SRT: return ".srt";
-        case TranscriptConfig::OutputFormat::VTT: return ".vtt";
+        case OutputFormat::MARKDOWN: return ".md";
+        case OutputFormat::TEXT: return ".txt";
+        case OutputFormat::JSON: return ".json";
+        case OutputFormat::CSV: return ".csv";
+        case OutputFormat::HTML: return ".html";
+        case OutputFormat::SRT: return ".srt";
+        case OutputFormat::VTT: return ".vtt";
         default: return ".txt";
     }
 }

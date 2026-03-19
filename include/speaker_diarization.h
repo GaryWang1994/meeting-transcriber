@@ -2,6 +2,7 @@
 
 #include "utils.h"
 #include "audio_processor.h"
+#include "asr_engine.h"
 #include <memory>
 #include <vector>
 #include <map>
