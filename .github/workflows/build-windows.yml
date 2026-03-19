@@ -1,0 +1,116 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup MinGW
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        platform: x64
+        
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v1.13
+      with:
+        cmake-version: '3.25.x'
+        
+    - name: Build
+      shell: pwsh
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        mingw32-make -j4
+        
+    - name: Package
+      shell: pwsh
+      run: |
+        $packageName = "meeting-transcriber-windows-x64"
+        New-Item -ItemType Directory -Force -Name $packageName
+        
+        # 复制可执行文件
+        Copy-Item "build/bin/meeting-transcriber.exe" -Destination $packageName/
+        Copy-Item "build/meeting-transcriber.exe" -Destination $packageName/ -ErrorAction SilentlyContinue
+        
+        # 复制依赖库（如果有）
+        Get-ChildItem "build/bin/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
+        Get-ChildItem "build/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
+        
+        # 创建 README
+        @"
+Meeting Transcriber for Windows
+================================
+
+使用方法:
+1. 将音频文件 (m4a 格式) 放入此文件夹
+2. 打开命令提示符 (CMD) 或 PowerShell
+3. 运行: meeting-transcriber.exe -i <音频文件.m4a> -o <输出文件.md>
+
+示例:
+  meeting-transcriber.exe -i meeting.m4a -o meeting.md
+  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json
+
+参数说明:
+  -i, --input    输入音频文件路径
+  -o, --output   输出文件路径
+  -f, --format   输出格式: md, txt, json, csv, html (默认: md)
+  --no-timestamps  不包含时间戳
+  --no-speakers    不包含说话人标识
+
+系统要求:
+- Windows 10 或更高版本
+- 64位系统
+
+更多信息请访问: https://gitea.example.com/gary/meeting-transcriber
+"@ | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
+        
+        # 创建 ZIP 包
+        Compress-Archive -Path $packageName -DestinationPath "$packageName.zip" -Force
+        
+        Write-Host "Created: $packageName.zip"
+        
+    - name: Upload to Gitea (if tagged)
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: pwsh
+      run: |
+        $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
+        $assetPath = "meeting-transcriber-windows-x64.zip"
+        
+        # Gitea API endpoint
+        $giteaUrl = "http://192.168.1.252:3000/api/v1"
+        $owner = "gary"
+        $repo = "meeting-transcriber"
+        
+        Write-Host "Creating release for tag: $tag"
+        
+        # Create release
+        $releaseData = @{
+            tag_name = $tag
+            name = "Release $tag"
+            body = "Windows x64 build of Meeting Transcriber"
+            draft = $false
+            prerelease = $false
+        } | ConvertTo-Json
+        
+        # Note: This requires a Gitea API token
+        # You need to set GITEA_TOKEN secret in your repository settings
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: meeting-transcriber-windows-x64
+        path: |
+          meeting-transcriber-windows-x64/meeting-transcriber.exe
+          meeting-transcriber-windows-x64/README.txt

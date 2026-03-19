@@ -1,0 +1,130 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libavformat-dev libavcodec-dev libswresample-dev libavutil-dev
+    
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+    
+    - name: Build
+      run: |
+        cd build
+        make -j$(nproc)
+    
+    - name: Package
+      run: |
+        mkdir -p package
+        cp build/bin/meeting-transcriber package/
+        cat > package/README.txt << 'EOF'
+Meeting Transcriber - Linux x64
+================================
+
+This is a Linux build of Meeting Transcriber.
+
+To run:
+  ./meeting-transcriber --help
+
+Requirements:
+- Linux x64
+- FFmpeg libraries (libavformat, libavcodec, etc.)
+
+For Windows build, please compile from source or check releases.
+EOF
+        cd package && tar czf ../meeting-transcriber-linux-x64.tar.gz *
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: meeting-transcriber-linux
+        path: meeting-transcriber-linux-x64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-ffmpeg
+
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        mingw32-make -j$(nproc)
+
+    - name: Package
+      shell: msys2 {0}
+      run: |
+        mkdir -p package
+        cp build/bin/meeting-transcriber.exe package/
+        # Copy dependencies
+        ldd build/bin/meeting-transcriber.exe | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/
+        cat > package/README.txt << 'EOF'
+Meeting Transcriber for Windows
+================================
+
+使用方法:
+1. 将音频文件放入此文件夹
+2. 打开 CMD 或 PowerShell
+3. 运行: meeting-transcriber.exe -i <音频文件> -o <输出文件>
+
+示例:
+  meeting-transcriber.exe -i meeting.m4a -o meeting.md
+
+系统要求:
+- Windows 10/11 64位
+EOF
+        cd package && zip -r ../meeting-transcriber-windows-x64.zip *
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: meeting-transcriber-windows
+        path: meeting-transcriber-windows-x64.zip
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          meeting-transcriber-linux/meeting-transcriber-linux-x64.tar.gz
+          meeting-transcriber-windows/meeting-transcriber-windows-x64.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

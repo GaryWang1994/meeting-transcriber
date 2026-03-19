@@ -9,6 +9,10 @@
 #include <memory>
 #include <chrono>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 using namespace meeting_transcriber;
 
 // 程序版本
