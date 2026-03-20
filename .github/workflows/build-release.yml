@@ -32,7 +32,7 @@ jobs:
       run: |
         mkdir -p package
         cp build/bin/meeting-transcriber package/
-        cat > package/README.txt << 'EOF'
+        cat > package/README.txt << 'ENDREADME'
 Meeting Transcriber - Linux x64
 ================================
 
@@ -46,7 +46,7 @@ Requirements:
 - FFmpeg libraries (libavformat, libavcodec, etc.)
 
 For Windows build, please compile from source or check releases.
-EOF
+ENDREADME
         cd package && tar czf ../meeting-transcriber-linux-x64.tar.gz *
     
     - name: Upload artifact

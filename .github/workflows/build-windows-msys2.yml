@@ -52,7 +52,7 @@ jobs:
         ldd package/meeting-transcriber.exe 2>/dev/null | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/ 2>/dev/null || true
         
         # Create README
-        cat > package/README.txt << 'EOF'
+        cat > package/README.txt << 'ENDREADME'
 Meeting Transcriber for Windows
 ================================
 
@@ -69,7 +69,7 @@ System Requirements:
 - Windows 10/11 64-bit
 
 Note: This build does not include FFmpeg support.
-EOF
+ENDREADME
         
         cd package && zip -r ../meeting-transcriber-windows-x64.zip *
 

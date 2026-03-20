@@ -40,16 +40,16 @@ jobs:
         $packageName = "meeting-transcriber-windows-x64"
         New-Item -ItemType Directory -Force -Name $packageName
         
-        # 复制可执行文件
+        # Copy executable
         Copy-Item "build/bin/meeting-transcriber.exe" -Destination $packageName/
         Copy-Item "build/meeting-transcriber.exe" -Destination $packageName/ -ErrorAction SilentlyContinue
         
-        # 复制依赖库（如果有）
+        # Copy dependencies (if any)
         Get-ChildItem "build/bin/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
         Get-ChildItem "build/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
         
-        # 创建 README
-        @"
+        # Create README
+        $readmeContent = @"
 Meeting Transcriber for Windows
 ================================
 
@@ -74,38 +74,13 @@ Meeting Transcriber for Windows
 - 64位系统
 
 更多信息请访问: https://gitea.example.com/gary/meeting-transcriber
-"@ | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
+"@
+        $readmeContent | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
         
-        # 创建 ZIP 包
+        # Create ZIP package
         Compress-Archive -Path $packageName -DestinationPath "$packageName.zip" -Force
         
         Write-Host "Created: $packageName.zip"
-        
-    - name: Upload to Gitea (if tagged)
-      if: startsWith(github.ref, 'refs/tags/')
-      shell: pwsh
-      run: |
-        $tag = "${{ github.ref }}" -replace 'refs/tags/', ''
-        $assetPath = "meeting-transcriber-windows-x64.zip"
-        
-        # Gitea API endpoint
-        $giteaUrl = "http://192.168.1.252:3000/api/v1"
-        $owner = "gary"
-        $repo = "meeting-transcriber"
-        
-        Write-Host "Creating release for tag: $tag"
-        
-        # Create release
-        $releaseData = @{
-            tag_name = $tag
-            name = "Release $tag"
-            body = "Windows x64 build of Meeting Transcriber"
-            draft = $false
-            prerelease = $false
-        } | ConvertTo-Json
-        
-        # Note: This requires a Gitea API token
-        # You need to set GITEA_TOKEN secret in your repository settings
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
