@@ -48,34 +48,34 @@ jobs:
         Get-ChildItem "build/bin/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
         Get-ChildItem "build/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
         
-        # Create README
-        $readmeContent = @"
-Meeting Transcriber for Windows
-================================
-
-使用方法:
-1. 将音频文件 (m4a 格式) 放入此文件夹
-2. 打开命令提示符 (CMD) 或 PowerShell
-3. 运行: meeting-transcriber.exe -i <音频文件.m4a> -o <输出文件.md>
-
-示例:
-  meeting-transcriber.exe -i meeting.m4a -o meeting.md
-  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json
-
-参数说明:
-  -i, --input    输入音频文件路径
-  -o, --output   输出文件路径
-  -f, --format   输出格式: md, txt, json, csv, html (默认: md)
-  --no-timestamps  不包含时间戳
-  --no-speakers    不包含说话人标识
-
-系统要求:
-- Windows 10 或更高版本
-- 64位系统
-
-更多信息请访问: https://gitea.example.com/gary/meeting-transcriber
-"@
-        $readmeContent | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
+        # Create README - write lines individually to avoid heredoc issues
+        $readmeLines = @(
+          'Meeting Transcriber for Windows',
+          '================================',
+          '',
+          '使用方法:',
+          '1. 将音频文件 (m4a 格式) 放入此文件夹',
+          '2. 打开命令提示符 (CMD) 或 PowerShell',
+          '3. 运行: meeting-transcriber.exe -i <音频文件.m4a> -o <输出文件.md>',
+          '',
+          '示例:',
+          '  meeting-transcriber.exe -i meeting.m4a -o meeting.md',
+          '  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json',
+          '',
+          '参数说明:',
+          '  -i, --input    输入音频文件路径',
+          '  -o, --output   输出文件路径',
+          '  -f, --format   输出格式: md, txt, json, csv, html (默认: md)',
+          '  --no-timestamps  不包含时间戳',
+          '  --no-speakers    不包含说话人标识',
+          '',
+          '系统要求:',
+          '- Windows 10 或更高版本',
+          '- 64位系统',
+          '',
+          '更多信息请访问: https://gitea.example.com/gary/meeting-transcriber'
+        )
+        $readmeLines | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
         
         # Create ZIP package
         Compress-Archive -Path $packageName -DestinationPath "$packageName.zip" -Force

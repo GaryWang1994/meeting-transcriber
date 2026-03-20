@@ -51,25 +51,8 @@ jobs:
         # Copy dependencies
         ldd package/meeting-transcriber.exe 2>/dev/null | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/ 2>/dev/null || true
         
-        # Create README
-        cat > package/README.txt << 'ENDREADME'
-Meeting Transcriber for Windows
-================================
-
-Usage:
-1. Place your audio file (.m4a) in this folder
-2. Open CMD or PowerShell
-3. Run: meeting-transcriber.exe -i <audio.m4a> -o <output.md>
-
-Example:
-  meeting-transcriber.exe -i meeting.m4a -o meeting.md
-  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json
-
-System Requirements:
-- Windows 10/11 64-bit
-
-Note: This build does not include FFmpeg support.
-ENDREADME
+        # Create README using printf instead of heredoc
+        printf '%s\n' 'Meeting Transcriber for Windows' '================================' '' 'Usage:' '1. Place your audio file (.m4a) in this folder' '2. Open CMD or PowerShell' '3. Run: meeting-transcriber.exe -i <audio.m4a> -o <output.md>' '' 'Example:' '  meeting-transcriber.exe -i meeting.m4a -o meeting.md' '  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json' '' 'System Requirements:' '- Windows 10/11 64-bit' '' 'Note: This build does not include FFmpeg support.' > package/README.txt
         
         cd package && zip -r ../meeting-transcriber-windows-x64.zip *
 

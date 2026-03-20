@@ -32,21 +32,7 @@ jobs:
       run: |
         mkdir -p package
         cp build/bin/meeting-transcriber package/
-        cat > package/README.txt << 'ENDREADME'
-Meeting Transcriber - Linux x64
-================================
-
-This is a Linux build of Meeting Transcriber.
-
-To run:
-  ./meeting-transcriber --help
-
-Requirements:
-- Linux x64
-- FFmpeg libraries (libavformat, libavcodec, etc.)
-
-For Windows build, please compile from source or check releases.
-ENDREADME
+        printf '%s\n' 'Meeting Transcriber - Linux x64' '================================' '' 'This is a Linux build of Meeting Transcriber.' '' 'To run:' '  ./meeting-transcriber --help' '' 'Requirements:' '- Linux x64' '- FFmpeg libraries (libavformat, libavcodec, etc.)' '' 'For Windows build, please compile from source or check releases.' > package/README.txt
         cd package && tar czf ../meeting-transcriber-linux-x64.tar.gz *
     
     - name: Upload artifact
@@ -87,21 +73,7 @@ ENDREADME
         cp build/bin/meeting-transcriber.exe package/
         # Copy dependencies
         ldd build/bin/meeting-transcriber.exe | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/
-        cat > package/README.txt << 'EOF'
-Meeting Transcriber for Windows
-================================
-
-使用方法:
-1. 将音频文件放入此文件夹
-2. 打开 CMD 或 PowerShell
-3. 运行: meeting-transcriber.exe -i <音频文件> -o <输出文件>
-
-示例:
-  meeting-transcriber.exe -i meeting.m4a -o meeting.md
-
-系统要求:
-- Windows 10/11 64位
-EOF
+        printf '%s\n' 'Meeting Transcriber for Windows' '================================' '使用方法:' '1. 将音频文件放入此文件夹' '2. 打开 CMD 或 PowerShell' '3. 运行: meeting-transcriber.exe -i <音频文件> -o <输出文件>' '' '示例:' '  meeting-transcriber.exe -i meeting.m4a -o meeting.md' '' '系统要求:' '- Windows 10/11 64位' > package/README.txt
         cd package && zip -r ../meeting-transcriber-windows-x64.zip *
 
     - name: Upload artifact
