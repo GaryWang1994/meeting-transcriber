@@ -83,7 +83,7 @@ jobs:
         Write-Host "Created: $packageName.zip"
         
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: meeting-transcriber-windows-x64
         path: |
