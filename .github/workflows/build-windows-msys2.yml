@@ -1,0 +1,80 @@
+name: Build Windows with MSYS2
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows-msys2:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v3
+    
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-pkgconf
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DWITH_FFMPEG=OFF
+
+    - name: Build
+      run: |
+        cd build
+        mingw32-make -j$(nproc)
+
+    - name: Package
+      run: |
+        mkdir -p package
+        cp build/bin/meeting-transcriber.exe package/ 2>/dev/null || cp build/meeting-transcriber.exe package/ 2>/dev/null || echo "No exe found"
+        
+        # Check if exe exists
+        if [ ! -f "package/meeting-transcriber.exe" ]; then
+          echo "ERROR: meeting-transcriber.exe not found"
+          find build -name "*.exe" 2>/dev/null
+          exit 1
+        fi
+        
+        # Copy dependencies
+        ldd package/meeting-transcriber.exe 2>/dev/null | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/ 2>/dev/null || true
+        
+        # Create README
+        cat > package/README.txt << 'EOF'
+Meeting Transcriber for Windows
+================================
+
+Usage:
+1. Place your audio file (.m4a) in this folder
+2. Open CMD or PowerShell
+3. Run: meeting-transcriber.exe -i <audio.m4a> -o <output.md>
+
+Example:
+  meeting-transcriber.exe -i meeting.m4a -o meeting.md
+  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json
+
+System Requirements:
+- Windows 10/11 64-bit
+
+Note: This build does not include FFmpeg support.
+EOF
+        
+        cd package && zip -r ../meeting-transcriber-windows-x64.zip *
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: meeting-transcriber-windows
+        path: meeting-transcriber-windows-x64.zip
