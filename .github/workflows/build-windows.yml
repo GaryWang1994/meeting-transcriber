@@ -16,71 +16,72 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       
-    - name: Setup MinGW
-      uses: egor-tensin/setup-mingw@v2
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
       with:
-        platform: x64
-        
-    - name: Setup CMake
-      uses: jwlawson/actions-setup-cmake@v1.13
-      with:
-        cmake-version: '3.25.x'
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-pkgconf
         
     - name: Build
-      shell: pwsh
+      shell: msys2 {0}
       run: |
         mkdir build
         cd build
         cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-        mingw32-make -j4
+        mingw32-make -j$(nproc)
         
     - name: Package
-      shell: pwsh
+      shell: msys2 {0}
       run: |
-        $packageName = "meeting-transcriber-windows-x64"
-        New-Item -ItemType Directory -Force -Name $packageName
+        packageName="meeting-transcriber-windows-x64"
+        mkdir -p "$packageName"
         
         # Copy executable
-        Copy-Item "build/bin/meeting-transcriber.exe" -Destination $packageName/
-        Copy-Item "build/meeting-transcriber.exe" -Destination $packageName/ -ErrorAction SilentlyContinue
+        cp build/bin/meeting-transcriber.exe "$packageName/" 2>/dev/null || \
+        cp build/meeting-transcriber.exe "$packageName/" 2>/dev/null || \
+        echo "Warning: meeting-transcriber.exe not found"
         
         # Copy dependencies (if any)
-        Get-ChildItem "build/bin/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
-        Get-ChildItem "build/*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination $packageName/
+        cp build/bin/*.dll "$packageName/" 2>/dev/null || true
+        cp build/*.dll "$packageName/" 2>/dev/null || true
         
-        # Create README - write lines individually to avoid heredoc issues
-        $readmeLines = @(
-          'Meeting Transcriber for Windows',
-          '================================',
-          '',
-          '使用方法:',
-          '1. 将音频文件 (m4a 格式) 放入此文件夹',
-          '2. 打开命令提示符 (CMD) 或 PowerShell',
-          '3. 运行: meeting-transcriber.exe -i <音频文件.m4a> -o <输出文件.md>',
-          '',
-          '示例:',
-          '  meeting-transcriber.exe -i meeting.m4a -o meeting.md',
-          '  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json',
-          '',
-          '参数说明:',
-          '  -i, --input    输入音频文件路径',
-          '  -o, --output   输出文件路径',
-          '  -f, --format   输出格式: md, txt, json, csv, html (默认: md)',
-          '  --no-timestamps  不包含时间戳',
-          '  --no-speakers    不包含说话人标识',
-          '',
-          '系统要求:',
-          '- Windows 10 或更高版本',
-          '- 64位系统',
-          '',
-          '更多信息请访问: https://gitea.example.com/gary/meeting-transcriber'
-        )
-        $readmeLines | Out-File -FilePath "$packageName/README.txt" -Encoding UTF8
+        # Create README
+        printf '%s\n' \
+          'Meeting Transcriber for Windows' \
+          '================================' \
+          '' \
+          '使用方法:' \
+          '1. 将音频文件 (m4a 格式) 放入此文件夹' \
+          '2. 打开命令提示符 (CMD) 或 PowerShell' \
+          '3. 运行: meeting-transcriber.exe -i <音频文件.m4a> -o <输出文件.md>' \
+          '' \
+          '示例:' \
+          '  meeting-transcriber.exe -i meeting.m4a -o meeting.md' \
+          '  meeting-transcriber.exe -i meeting.m4a -f json -o meeting.json' \
+          '' \
+          '参数说明:' \
+          '  -i, --input    输入音频文件路径' \
+          '  -o, --output   输出文件路径' \
+          '  -f, --format   输出格式: md, txt, json, csv, html (默认: md)' \
+          '  --no-timestamps  不包含时间戳' \
+          '  --no-speakers    不包含说话人标识' \
+          '' \
+          '系统要求:' \
+          '- Windows 10 或更高版本' \
+          '- 64位系统' \
+          '' \
+          '更多信息请访问: https://gitea.example.com/gary/meeting-transcriber' \
+          > "$packageName/README.txt"
         
         # Create ZIP package
-        Compress-Archive -Path $packageName -DestinationPath "$packageName.zip" -Force
+        cd "$packageName" && zip -r "../$packageName.zip" . && cd ..
         
-        Write-Host "Created: $packageName.zip"
+        echo "Created: $packageName.zip"
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
