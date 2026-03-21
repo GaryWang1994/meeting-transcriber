@@ -31,9 +31,14 @@ jobs:
     - name: Build
       shell: msys2 {0}
       run: |
+        export ONNXRUNTIME_ROOT="$GITHUB_WORKSPACE/deps/onnxruntime-win-x64-1.16.3"
+        echo "ONNXRUNTIME_ROOT=$ONNXRUNTIME_ROOT"
+        ls -la "$ONNXRUNTIME_ROOT/"
+        ls -la "$ONNXRUNTIME_ROOT/include/"
+        ls -la "$ONNXRUNTIME_ROOT/lib/"
         mkdir build
         cd build
-        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DONNXRUNTIME_ROOT="$ONNXRUNTIME_ROOT"
         mingw32-make -j$(nproc)
         
     - name: Package
