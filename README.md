@@ -31,13 +31,11 @@
 1. **下载预编译版本**
    - 从 Releases 页面下载 `MeetingTranscriber-v1.0.0-win64.zip`
    - 解压到任意目录
+   - ✅ **FFmpeg 已内置**，无需单独安装任何依赖
 
 2. **下载模型文件**
-   - 从 [ModelScope](https://modelscope.cn/models/Qwen/Qwen3-ASR-1.7B) 下载模型
-   - 或使用脚本下载：
-   ```bash
-   python python/download_model.py
-   ```
+   - 从 [ModelScope](https://modelscope.cn/models/Qwen/Qwen3-ASR-1.7B) 下载ONNX格式模型，或使用 `tools/convert_to_onnx.py` 脚本自行转换
+   - 模型放置方式：在程序目录创建 `models` 文件夹，将所有ONNX模型和配置文件放入其中
 
 3. **添加到环境变量**（可选）
    - 将解压目录添加到 PATH 环境变量

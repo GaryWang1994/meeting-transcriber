@@ -52,7 +52,11 @@ jobs:
         cp build/meeting-transcriber.exe "$packageName/" 2>/dev/null || \
         echo "Warning: meeting-transcriber.exe not found"
         
-        # Copy dependencies (if any)
+        # Copy all dependent DLLs (including FFmpeg and runtime libraries)
+        ldd build/bin/meeting-transcriber.exe 2>/dev/null | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} "$packageName/" 2>/dev/null || true
+        ldd build/meeting-transcriber.exe 2>/dev/null | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} "$packageName/" 2>/dev/null || true
+        
+        # Copy additional DLLs from build directory
         cp build/bin/*.dll "$packageName/" 2>/dev/null || true
         cp build/*.dll "$packageName/" 2>/dev/null || true
         
