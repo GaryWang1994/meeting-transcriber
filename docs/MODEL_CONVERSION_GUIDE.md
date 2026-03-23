@@ -14,22 +14,22 @@
 ## 🚀 快速开始
 
 ### 方法一：使用现成转换脚本（推荐）
-仓库中已经提供了现成的转换脚本 `tools/convert_to_onnx.py`，可以直接使用。
+仓库中已经提供了现成的转换脚本 `tools/convert_to_onnx.py`，经过兼容性测试可以直接使用。
 
-#### 1. 安装依赖
+#### 1. 安装依赖（必须严格按照版本安装）
 ```bash
-# 创建虚拟环境（可选但推荐）
+# 创建虚拟环境（可选但强烈推荐，避免依赖冲突）
 python -m venv venv
 # Windows
 venv\Scripts\activate
 # Linux/macOS
 source venv/bin/activate
 
-# 安装依赖
+# 安装核心依赖（⚠️ 不要使用更高版本的transformers/numpy）
 pip install torch==2.1.2 transformers==4.39.3 modelscope==1.15.0
-pip install onnx==1.15.0 onnxruntime==1.16.3 optimum==1.17.1
+pip install numpy==1.26.4 onnx==1.15.0 onnxruntime==1.16.3 tiktoken==0.6.0 accelerate==0.27.2
 
-# GPU版本（可选，有NVIDIA显卡时安装，转换更快）
+# GPU版本（可选，有NVIDIA显卡时安装，转换速度提升5-10倍）
 pip3 install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 ```
 
@@ -146,8 +146,18 @@ meeting-transcriber.exe "会议录音.m4a"
 
 ## 🐛 常见问题
 
+### ❌ 报错 `KeyError: 'qwen3_asr'` 或 `不认识模型架构`
+✅ **解决方案**：
+- 不要用 `transformers` 的 `AutoModelForSpeechSeq2Seq`，必须使用 `modelscope` 提供的加载类
+- 最新版本的转换脚本已经默认使用ModelScope的类，直接运行即可
+
+### ❌ 报错 `NumPy 2.x 不兼容`
+✅ **解决方案**：
+- 降级NumPy到1.x版本：`pip install numpy==1.26.4 --force-reinstall`
+- PyTorch 2.1.x不支持NumPy 2.x系列
+
 ### ❌ 转换时提示 `trust_remote_code` 错误
-- 解决方案：升级 transformers 到 4.37 以上版本：`pip install --upgrade transformers`
+- 解决方案：确保 `transformers >=4.37` 且 `modelscope >=1.15`，脚本已经自动开启`trust_remote_code=True`参数
 
 ### ❌ 转换后程序无法加载模型
 - 检查是否所有配置文件都复制到了 `models` 目录，不要遗漏任何 `.json` 或 `.txt` 文件
