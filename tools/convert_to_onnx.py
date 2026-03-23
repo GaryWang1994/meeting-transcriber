@@ -2,24 +2,25 @@
 """
 Qwen3-ASR 模型 ONNX 格式转换脚本
 适用于 Qwen/Qwen3-ASR-1.7B 等 Qwen 系列 ASR 模型
+
+⚠️ 注意：必须使用 ModelScope 的 AutoModel 类，不能用 Transformers 的，否则会识别不到 qwen3_asr 架构
 """
 
 import torch
 import os
 import shutil
 import argparse
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+# 必须使用 ModelScope 提供的加载类，支持自定义架构
+from modelscope import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Convert Qwen3-ASR model to ONNX format")
     parser.add_argument("--model-path", type=str, required=True, 
-                      help="Path to local Qwen3-ASR model directory")
+                      help="Path to local Qwen3-ASR model directory (downloaded from ModelScope)")
     parser.add_argument("--output-dir", type=str, default="./qwen3-asr-onnx",
                       help="Output directory for ONNX model (default: ./qwen3-asr-onnx)")
     parser.add_argument("--opset", type=int, default=17,
                       help="ONNX opset version (default: 17)")
-    parser.add_argument("--fp16", action="store_true",
-                      help="Export as FP16 precision (requires GPU)")
     return parser.parse_args()
 
 def main():
@@ -27,48 +28,37 @@ def main():
     MODEL_PATH = args.model_path
     OUTPUT_DIR = args.output_dir
     OPSET_VERSION = args.opset
-    USE_FP16 = args.fp16
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     print(f"🚀 Starting ONNX conversion for Qwen3-ASR model")
     print(f"📥 Input model path: {MODEL_PATH}")
     print(f"📤 Output directory: {OUTPUT_DIR}")
     print(f"⚙️  ONNX opset version: {OPSET_VERSION}")
-    print(f"⚡ FP16 precision: {'Enabled' if USE_FP16 else 'Disabled (FP32)'}")
 
     # ======================
     # Step 1: Load model and processor
     # ======================
-    print("\n📦 Loading model and processor...")
+    print("\n📦 Loading model and processor from ModelScope...")
     processor = AutoProcessor.from_pretrained(MODEL_PATH, trust_remote_code=True)
     model = AutoModelForSpeechSeq2Seq.from_pretrained(
         MODEL_PATH, 
-        torch_dtype=torch.float16 if USE_FP16 else torch.float32,
+        torch_dtype=torch.float32,
         trust_remote_code=True,
         low_cpu_mem_usage=True
     )
     model.eval()
-    
-    if USE_FP16 and torch.cuda.is_available():
-        model = model.cuda()
-        print("✅ Using GPU for conversion")
-    else:
-        print("✅ Using CPU for conversion")
+    print("✅ Model loaded successfully (ModelScope format)")
 
     # ======================
     # Step 2: Prepare dummy input
     # ======================
     print("\n🔧 Preparing test input...")
-    # Input shape: (batch_size, feature_dim, sequence_length)
-    # Qwen3-ASR uses 80 mel features, default sequence length 3000 (15 seconds)
+    # Qwen3-ASR input shape: (batch_size, 80 mel features, sequence_length)
+    # 3000 frames = ~15 seconds of audio
     dummy_input = {
-        "input_features": torch.randn(1, 80, 3000, dtype=torch.float16 if USE_FP16 else torch.float32),
+        "input_features": torch.randn(1, 80, 3000, dtype=torch.float32),
         "attention_mask": torch.ones(1, 3000, dtype=torch.long)
     }
-    
-    if USE_FP16 and torch.cuda.is_available():
-        dummy_input["input_features"] = dummy_input["input_features"].cuda()
-        dummy_input["attention_mask"] = dummy_input["attention_mask"].cuda()
 
     # ======================
     # Step 3: Export ONNX model
@@ -92,15 +82,16 @@ def main():
     print("✅ Model exported successfully")
 
     # ======================
-    # Step 4: Copy configuration files
+    # Step 4: Copy configuration files (including custom model code)
     # ======================
-    print("\n📋 Copying configuration files...")
+    print("\n📋 Copying configuration and custom code files...")
     files_to_copy = [
         "config.json",
-        "vocab.json",
         "vocab.txt",
         "preprocessor_config.json",
         "generation_config.json",
+        "modeling_qwen2_audio.py",
+        "configuration_qwen2_audio.py",
         "tokenizer.json",
         "tokenizer_config.json"
     ]
@@ -117,51 +108,34 @@ def main():
             print(f"  ⚠️  Not found: {file} (skipping, may not be required)")
 
     # ======================
-    # Step 5: Create usage guide
+    # Step 5: Create conversion info
     # ======================
-    guide_content = f"""# 模型使用说明
-
-## 转换信息
-- 源模型路径: {MODEL_PATH}
-- 转换时间: {torch.__version__}
+    info_content = f"""# 模型转换信息
+- 源模型: Qwen3-ASR-1.7B
+- 转换工具版本: v1.1 (ModelScope版)
 - ONNX opset版本: {OPSET_VERSION}
-- 精度: {'FP16' if USE_FP16 else 'FP32'}
+- 精度: FP32
+- 转换时间: {torch.__version__}
 
 ## 使用方法
-将本目录下所有文件复制到 meeting-transcriber 的 `models` 目录下，结构如下：
-```
-meeting-transcriber.exe
-models/
-  ├── model.onnx
-  ├── config.json
-  ├── vocab.txt
-  ├── preprocessor_config.json
-  └── [其他配置文件]
-```
-
-运行程序：
-```bash
-meeting-transcriber.exe "你的音频文件.m4a"
-```
-
-或者手动指定模型路径：
-```bash
-meeting-transcriber.exe "你的音频文件.m4a" --model "/path/to/model.onnx"
-```
+将本目录下所有文件复制到 meeting-transcriber 的 `models` 目录即可使用。
+无需额外安装FFmpeg，Windows版本已内置所有依赖。
 """
-    with open(f"{OUTPUT_DIR}/README_CONVERSION.txt", "w", encoding="utf-8") as f:
-        f.write(guide_content)
-    print("\n📝 Generated conversion guide: README_CONVERSION.txt")
+    with open(f"{OUTPUT_DIR}/CONVERSION_INFO.txt", "w", encoding="utf-8") as f:
+        f.write(info_content)
 
     # ======================
     # Summary
     # ======================
-    print("\n🎉 Conversion completed!")
+    print("\n🎉 Conversion completed successfully!")
     print(f"📦 Output files are in: {OUTPUT_DIR}")
-    print(f"\n📋 Next steps:")
-    print(f"  1. Copy all files from {OUTPUT_DIR} to the 'models' directory of meeting-transcriber")
-    print(f"  2. Ensure FFmpeg is installed (required for audio decoding)")
-    print(f"  3. Run meeting-transcriber.exe with your audio file")
+    print(f"\n✅ 验证方法:")
+    print(f"  请确认 {OUTPUT_DIR} 目录下包含:")
+    print(f"   - model.onnx (约1.7GB左右)")
+    print(f"   - config.json, vocab.txt, preprocessor_config.json")
+    print(f"\n🚀 使用方法:")
+    print(f"  1. 将所有文件复制到 meeting-transcriber 的 'models' 目录")
+    print(f"  2. 直接运行: meeting-transcriber.exe 你的音频文件.m4a")
 
 if __name__ == "__main__":
     main()
