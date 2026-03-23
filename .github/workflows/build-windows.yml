@@ -30,8 +30,9 @@ jobs:
         
     - name: Build
       shell: msys2 {0}
+      env:
+        ONNXRUNTIME_ROOT: ${{ github.workspace }}/deps/onnxruntime-win-x64-1.16.3
       run: |
-        export ONNXRUNTIME_ROOT="$GITHUB_WORKSPACE/deps/onnxruntime-win-x64-1.16.3"
         echo "ONNXRUNTIME_ROOT=$ONNXRUNTIME_ROOT"
         ls -la "$ONNXRUNTIME_ROOT/"
         ls -la "$ONNXRUNTIME_ROOT/include/"
