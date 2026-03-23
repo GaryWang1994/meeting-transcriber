@@ -25,18 +25,14 @@ jobs:
           mingw-w64-x86_64-make
           mingw-w64-x86_64-pkgconf
 
-    - name: Download ONNX Runtime
-      shell: msys2 {0}
-      run: |
-        curl -L -o onnxruntime-win-x64-1.16.3.zip https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-win-x64-1.16.3.zip
-        unzip -q onnxruntime-win-x64-1.16.3.zip
-        mv onnxruntime-win-x64-1.16.3 deps/
-        
     - name: Configure CMake
+      env:
+        ONNXRUNTIME_ROOT: ${{ github.workspace }}/deps/onnxruntime-win-x64-1.16.3
       run: |
+        export ONNXRUNTIME_ROOT="$(cygpath -u "$ONNXRUNTIME_ROOT")"
         mkdir build
         cd build
-        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DWITH_FFMPEG=OFF -DONNXRUNTIME_ROOT=../deps/onnxruntime-win-x64-1.16.3
+        cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DWITH_FFMPEG=OFF -DONNXRUNTIME_ROOT="$ONNXRUNTIME_ROOT"
 
     - name: Build
       run: |
