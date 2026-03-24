@@ -1,21 +1,16 @@
-Run cmake -B D:\a\meeting-transcriber\meeting-transcriber/build -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -S D:\a\meeting-transcriber\meeting-transcriber
--- Building for: Visual Studio 17 2022
--- The CXX compiler identification is MSVC 19.44.35223.0
--- Detecting CXX compiler ABI info
--- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
--- Detecting CXX compile features
--- Detecting CXX compile features - done
--- Found OpenMP_CXX: -openmp (found version "2.0")
--- Found OpenMP: TRUE (found version "2.0")
-CMake Error at C:/Program Files/CMake/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:233 (message):
-  Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE)
-Call Stack (most recent call first):
-  C:/Program Files/CMake/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:603 (_FPHSA_FAILURE_MESSAGE)
-  C:/Program Files/CMake/share/cmake-3.31/Modules/FindPkgConfig.cmake:114 (find_package_handle_standard_args)
-  CMakeLists.txt:21 (find_package)
-
-
--- Configuring incomplete, errors occurred!
-Error: Process completed with exit code 1.
+Run softprops/action-gh-release@v1
+👩‍🏭 Creating new GitHub release for tag v1.0.1...
+⚠️ GitHub release failed with status: 403
+undefined
+retrying... (2 retries remaining)
+👩‍🏭 Creating new GitHub release for tag v1.0.1...
+⚠️ GitHub release failed with status: 403
+undefined
+retrying... (1 retries remaining)
+👩‍🏭 Creating new GitHub release for tag v1.0.1...
+⚠️ GitHub release failed with status: 403
+undefined
+retrying... (0 retries remaining)
+❌ Too many retries. Aborting...
+Error: Too many retries.
 

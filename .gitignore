@@ -1,6 +1,5 @@
-# Large files
-*.pdb
-deps/onnxruntime-*/lib/*.pdb
 # Large binary files
 *.pdb
 deps/onnxruntime-*/lib/*.pdb
+build*/
+build/
