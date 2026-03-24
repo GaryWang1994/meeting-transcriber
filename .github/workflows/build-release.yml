@@ -82,9 +82,14 @@ jobs:
       run: |
         mkdir -p package
         cp build/bin/meeting-transcriber.exe package/
-        # Copy dependencies
-        ldd build/bin/meeting-transcriber.exe | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/
-        printf '%s\n' 'Meeting Transcriber for Windows' '================================' '使用方法:' '1. 将音频文件放入此文件夹' '2. 打开 CMD 或 PowerShell' '3. 运行: meeting-transcriber.exe -i <音频文件> -o <输出文件>' '' '示例:' '  meeting-transcriber.exe -i meeting.m4a -o meeting.md' '' '系统要求:' '- Windows 10/11 64位' > package/README.txt
+        # Copy all dependent DLLs from mingw64
+        ldd build/bin/meeting-transcriber.exe | grep mingw64 | awk '{print $3}' | xargs -I{} cp {} package/ 2>/dev/null || true
+        # Copy additional DLLs from build directory (including ONNX Runtime and FFmpeg DLLs)
+        cp build/bin/*.dll package/ 2>/dev/null || true
+        # Verify DLLs exist
+        echo "Files in package:"
+        ls -la package/
+        printf '%s\n' 'Meeting Transcriber for Windows' '================================' '使用方法:' '1. 将音频文件放入此文件夹' '2. 打开 CMD 或 PowerShell' '3. 运行: meeting-transcriber.exe -i <音频文件> -o <输出文件>' '' '示例:' '  meeting-transcriber.exe -i meeting.m4a -o meeting.md' '  meeting-transcriber.exe -i meeting.mp3 -o meeting.md' '' '系统要求:' '- Windows 10/11 64位' 'FFmpeg已内置，无需单独安装' > package/README.txt
         cd package && zip -r ../meeting-transcriber-windows-x64.zip *
 
     - name: Upload artifact

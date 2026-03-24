@@ -81,6 +81,7 @@ target_include_directories(${PROJECT_NAME}
 )
 
 # Link libraries
+target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_FFMPEG=1)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         PkgConfig::FFMPEG
