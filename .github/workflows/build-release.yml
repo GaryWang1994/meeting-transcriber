@@ -103,6 +103,8 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
+      permissions:
+        contents: write
       with:
         files: |
           meeting-transcriber-linux/meeting-transcriber-linux-x64.tar.gz
