@@ -105,7 +105,7 @@ struct FFmpegAudioDecoder::Impl {
     
     void cleanup() {
         if (swrCtx) {
-            swresample.swr_free(&swrCtx);
+            swr_free(&swrCtx);
             swrCtx = nullptr;
         }
         if (frame) {
@@ -117,7 +117,6 @@ struct FFmpegAudioDecoder::Impl {
             packet = nullptr;
         }
         if (codecCtx) {
-            avcodec_close(codecCtx);
             avcodec_free_context(&codecCtx);
             codecCtx = nullptr;
         }
@@ -236,12 +235,12 @@ bool FFmpegAudioDecoder::decodeToBuffer(AudioBuffer& buffer, ProgressCallback* c
     AudioFormat format = getFormat();
     
     // 初始化重采样器
-    m_impl->swrCtx = swresample.swr_alloc_set_opts(
+    m_impl->swrCtx = swr_alloc_set_opts(
         nullptr,
-        av_channel_layout AV_CHANNEL_LAYOUT_MONO,  // 输出：单声道
+        AV_CHANNEL_LAYOUT_MONO,                     // 输出：单声道
         AV_SAMPLE_FMT_FLT,                          // 输出格式：float
         16000,                                      // 输出采样率：16kHz
-        &m_impl->codecCtx->ch_layout,              // 输入声道布局
+        m_impl->codecCtx->ch_layout.u.mask,         // 输入声道布局
         m_impl->codecCtx->sample_fmt,              // 输入格式
         m_impl->codecCtx->sample_rate,             // 输入采样率
         0, nullptr
@@ -252,7 +251,7 @@ bool FFmpegAudioDecoder::decodeToBuffer(AudioBuffer& buffer, ProgressCallback* c
         return false;
     }
     
-    if (swresample.swr_init(m_impl->swrCtx) < 0) {
+    if (swr_init(m_impl->swrCtx) < 0) {
         m_impl->setError("Failed to initialize resampler");
         return false;
     }
@@ -286,7 +285,7 @@ bool FFmpegAudioDecoder::decodeToBuffer(AudioBuffer& buffer, ProgressCallback* c
                 
                 // 重采样
                 uint8_t* outputData = nullptr;
-                int outputSamples = swresample.swr_convert(
+                int outputSamples = swr_convert(
                     m_impl->swrCtx,
                     &outputData, frame->nb_samples * 2,  // 最大输出样本数
                     (const uint8_t**)frame->data, frame->nb_samples
