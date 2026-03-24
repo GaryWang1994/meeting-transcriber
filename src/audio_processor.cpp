@@ -234,13 +234,14 @@ bool FFmpegAudioDecoder::decodeToBuffer(AudioBuffer& buffer, ProgressCallback* c
     // 获取音频格式
     AudioFormat format = getFormat();
     
-    // 初始化重采样器
-    m_impl->swrCtx = swr_alloc_set_opts(
+    // 初始化重采样器（适配FFmpeg 6.0+新API）
+    AVChannelLayout out_layout = AV_CHANNEL_LAYOUT_MONO;
+    m_impl->swrCtx = swr_alloc_set_opts2(
         nullptr,
-        AV_CHANNEL_LAYOUT_MONO,                     // 输出：单声道
+        &out_layout,                                // 输出：单声道
         AV_SAMPLE_FMT_FLT,                          // 输出格式：float
         16000,                                      // 输出采样率：16kHz
-        m_impl->codecCtx->ch_layout.u.mask,         // 输入声道布局
+        &m_impl->codecCtx->ch_layout,               // 输入声道布局
         m_impl->codecCtx->sample_fmt,              // 输入格式
         m_impl->codecCtx->sample_rate,             // 输入采样率
         0, nullptr
